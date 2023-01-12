@@ -1,3 +1,6 @@
+import datetime
+
+
 def isString(var):
     return isinstance(var, str)
 
@@ -20,3 +23,11 @@ def isList(var):
 
 def isTuple(var):
     return isinstance(var, tuple)
+
+
+def isObject(var):
+    return isinstance(var, object)
+
+
+def isDate(var):
+    return isinstance(var, datetime.date)

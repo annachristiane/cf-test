@@ -23,7 +23,7 @@ def columns_to_list(table, conn_postgresql):
     return (column_names)
 
 
-def liste_to_fieldnames(liste):
+def list_to_fieldnames(liste):
     """Function that takes as arguments the list containing our columns from our select 
     and put them in the format expected by our postgres table, before that we remove first column (_id) 
     and last(mostRecentDate), cause they are integrated later"""
@@ -65,6 +65,10 @@ def creation_insert_request_mongo(fieldnames, start, end):
 
 def compare_values(row): return max(
     row['objectInfos-creation-date'], row['objectInfos-lastUpdate-date'])
+
+
+def get_max(dates):
+    return max(dates)
 
 
 def delta_update(fieldnames, table, conn_mongo, conn):
