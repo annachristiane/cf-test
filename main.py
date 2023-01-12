@@ -4,6 +4,7 @@ import postgresql
 import mongo
 import yaml
 import pandas as pd
+import os
 
 """_____________________COMMON PART (Only connection and fielnames creation)_____________________"""
 with open('config.yml') as f:
