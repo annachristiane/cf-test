@@ -10,23 +10,34 @@ import os
 
 """_____________________COMMON PART (Only connection and fielnames creation)_____________________"""
 
+# connection started
 conn_postgresql = postgresql.connect_to_postgres(config.postgresql)
-list = columns_to_list(config.table_name, config.postgresql)
+# use the connection to execute query
+#list = columns_to_list(config.table_name, conn_postgresql)
+columns_list = get_columns_list(config.table_name, conn_postgresql)
 
 # Nos colonnes une fois transformé deviennent nos fieldnames
-fieldnames = list_to_fieldnames(list)
+#fieldnames = list_to_fieldnames(list)
+fieldnames = columns_list_to_fieldnames(columns_list)
+# print(fieldnames)
 
 """___________________________________INSERT PART__________________________________"""
 # Création d'une query mongo DB pour filter nos lignes (ici en fonction de la date)
-start = datetime.datetime(2022, 12, 1, 0, 0, 0, 1)
-end = datetime.datetime(2023, 1, 5, 0, 0, 0, 0)
+# start = datetime.datetime(2022, 12, 1, 0, 0, 0, 1)
+# end = datetime.datetime(2023, 1, 5, 0, 0, 0, 0)
+
+start_date_str = config.start_date
+end_date_str = config.end_date
+start_date = datetime.datetime.strptime(start_date_str, '%Y/%m/%d %H:%M:%S')
+end_date = datetime.datetime.strptime(end_date_str, '%Y/%m/%d %H:%M:%S')
 
 # on genere une query mongo DB qui recupere les données entre 2 date et les colonnes qui sont presentes dans fieldnames
-# creation_insert_request_mongo??
-query = creation_request_mongo(fieldnames, start, end)
+pipeline = creation_insert_request_mongo(fieldnames, start_date, end_date)
 
-df = mongo.mongo_to_df(config.mongo, query)
-
+conn_mongo = mongo.connect_to_mongo(config.mongo)
+#df = mongo.mongo_to_df(conn_mongo, pipeline)
+agg_results = mongo.get_aggregate(conn_mongo, pipeline)
+df = pd.DataFrame.from_records(agg_results)
 
 df['objectInfos-creation-date'] = pd.to_datetime(
     df['objectInfos-creation-date'])
@@ -35,7 +46,6 @@ df['objectInfos-lastUpdate-date'] = pd.to_datetime(
 
 # date_cols = ['objectInfos-creation-date', 'objectInfos-lastUpdate-date']
 # df[date_cols] = df[date_cols].apply(pd.to_datetime, errors='coerce')
-# df['mostRecentDate'] = get_max(date_cols)
 
 # On applique la lambda functions pour recupérer dans une nouvelle colonne de DF la date la plus élevée
 df['mostRecentDate'] = df.apply(compare_values, axis=1)

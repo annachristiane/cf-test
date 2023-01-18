@@ -4,38 +4,58 @@ import pandas as pd
 import datetime
 import libs.mongo as mongo
 import libs.postgresql as postgresql
+import pandas.io.sql as psql
+import libs.delete as delete
 
 
 warnings.simplefilter("ignore", UserWarning)
 
 
-def columns_to_list(table, conn_postgresql):
-    """
-    Function that takes as arguments a connection and a table and will simply put all the columns of the table in a list.
-    """
-    conn = postgresql.connect_to_postgres(conn_postgresql)
-    cursor = conn.cursor()
-    table_name = table
+# def columns_to_list(table_name, conn_postgresql):
+#     """
+#     Function that takes as arguments a connection and a table and will simply put all the columns of the table in a list.
+#     """
+#     # conn = postgresql.connect_to_postgres(conn_postgresql)
+#     cursor = conn_postgresql.cursor()
+#     # table_name = table_name
+#     query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+#     cursor.execute(query)
+#     column_names = [row[0] for row in cursor.fetchall()]
+#     cursor.close()
+#     return (column_names)
+
+
+def get_columns_list(table_name, table_schema, conn_postgresql):
     query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
-    cursor.execute(query)
-    column_names = [row[0] for row in cursor.fetchall()]
-    cursor.close()
-    return (column_names)
+    df = psql.read_sql(query, conn_postgresql)
+    columns_list = df.column_name.values.tolist()
+    return columns_list
 
 
-def list_to_fieldnames(liste):
+# def list_to_fieldnames(list):
+#     """Function that takes as arguments the list containing our columns from our select
+#     and put them in the format expected by our postgres table, before that we remove first column (_id)
+#     and last(mostRecentDate), cause they are integrated later"""
+#     list.pop(0)
+#     list.pop(-1)
+#     for i in range(len(list)):
+#         list[i] = list[i].replace("_", "-")
+#         list[i] = list[i].replace("OID", "_id")
+#     return (list)
+
+
+def columns_list_to_fieldnames(columns_list):
     """Function that takes as arguments the list containing our columns from our select 
     and put them in the format expected by our postgres table, before that we remove first column (_id) 
     and last(mostRecentDate), cause they are integrated later"""
-    liste.pop(0)
-    liste.pop(-1)
-    for i in range(len(liste)):
-        liste[i] = liste[i].replace("_", "-")
-        liste[i] = liste[i].replace("OID", "_id")
-    return (liste)
+    delete.delete_at_index(columns_list, 0)
+    delete.delete_at_index(columns_list, -1)
+    fieldnames = [s.replace('_', '-') for s in columns_list]
+    fieldnames = [s.replace('OID', '_id') for s in fieldnames]
+    return (fieldnames)
 
 
-def creation_insert_request_mongo(fieldnames, start, end):
+def creation_insert_request_mongo(fieldnames, start_date, end_date):
     """this function takes as argument fieldname, a start date and an end date, 
     it will create a query mongo DB composed of two parts, the match which allows to filter on the date 
     and the project part which allows to get the data of the columns which interest us. It return the request in string format """
@@ -43,8 +63,8 @@ def creation_insert_request_mongo(fieldnames, start, end):
     match_stage = {
         "$match": {
             "objectInfos.creation.date": {
-                "$gte": start,
-                "$lt": end
+                "$gte": start_date,
+                "$lt": end_date
             }
         }
     }
@@ -65,10 +85,6 @@ def creation_insert_request_mongo(fieldnames, start, end):
 
 def compare_values(row): return max(
     row['objectInfos-creation-date'], row['objectInfos-lastUpdate-date'])
-
-
-def get_max(dates):
-    return max(dates)
 
 
 def delta_update(fieldnames, table, conn_mongo, conn):

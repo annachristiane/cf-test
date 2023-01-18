@@ -3,15 +3,19 @@ import psycopg2.extras as extras
 import pandas as pd
 
 
-def connect_to_postgres(conn):
+def connect_to_postgres(postgresql):
     """ This fonction take user, password, host, port and database name 
     and use psycopG2 lib to create a connection to a postgresql database"""
-    conn = psycopg2.connect(
-        user=conn['user'],
-        password=conn['password'],
-        host=conn['host'],
-        port=conn['port'],
-        database=conn['database'])
+    try:
+        conn = psycopg2.connect(
+            user=postgresql['user'],
+            password=postgresql['password'],
+            host=postgresql['host'],
+            port=postgresql['port'],
+            database=postgresql['database'])
+        print("Postgresql connection started successfully.")
+    except (Exception, psycopg2.Error) as error:
+        print("Error during connection to PostgreSQL", error)
     return (conn)
 
 
@@ -40,22 +44,24 @@ def select_to_df(conn, table):
     conn_str = connect_to_postgres(conn)
     df = pd.read_sql_query("SELECT * FROM "+table, conn_str)
     conn_str.close()
-    return(df)
+    return (df)
+
 
 def postgres_mostRecentDate(conn, table):
     """This function is similar to select_to_df take the same argument, the difference is here 
     we store the most recent date of a table, put in argument"""
     conn_str = connect_to_postgres(conn)
-    df = pd.read_sql_query('select Max("mostRecentDate") from '+table, conn_str)
+    df = pd.read_sql_query(
+        'select Max("mostRecentDate") from '+table, conn_str)
     conn_str.close()
-    return(df)
+    return (df)
 
 
 def insert_update_value(conn, df, table, pk):
     """This function is pretty similar to insert_value, the only difference is, here if the insert 
     return a duplicate primary key error, we update values in the table"""
     cursor = conn.cursor()
-    for i,row in df.iterrows():
+    for i, row in df.iterrows():
         placeholders = ", ".join(["%s"] * len(row))
         insert_query = f"INSERT INTO {table} VALUES ({placeholders})"
         values = tuple(row)
@@ -65,10 +71,14 @@ def insert_update_value(conn, df, table, pk):
         except psycopg2.errors.UniqueViolation:
             conn.rollback()
             update_query = f'UPDATE {table} SET "objectInfos_creation_date" = %s , "objectInfos_lastUpdate_date" = %s, "mostRecentDate" = %s where "{pk}" = %s'
-            creation_date = row['objectInfos-creation-date'].strftime("%Y-%m-%d %H:%M:%S.%f")
-            last_update_date = row['objectInfos-lastUpdate-date'].strftime("%Y-%m-%d %H:%M:%S.%f")
-            mostrecentdate = row['mostRecentDate'].strftime("%Y-%m-%d %H:%M:%S.%f")
-            update_values = (creation_date,last_update_date ,mostrecentdate, row['_id'])
+            creation_date = row['objectInfos-creation-date'].strftime(
+                "%Y-%m-%d %H:%M:%S.%f")
+            last_update_date = row['objectInfos-lastUpdate-date'].strftime(
+                "%Y-%m-%d %H:%M:%S.%f")
+            mostrecentdate = row['mostRecentDate'].strftime(
+                "%Y-%m-%d %H:%M:%S.%f")
+            update_values = (creation_date, last_update_date,
+                             mostrecentdate, row['_id'])
             cursor.execute(update_query, update_values)
             conn.commit()
     print("the dataframe is inserted")

@@ -24,6 +24,13 @@ mongo = {
     "collection": os.getenv("mongo_collection")  # promiseOrder
 }
 
-table_name = os.getenv("table_name")
+table_name = os.getenv("table_name")  # qal_omsorder_promiseorder
 
-table_schema = os.getenv("table_schema")
+table_schema = os.getenv("table_schema")  # dev.qal_omsorder_promiseorder
+
+mongo_uri = "mongodb://"+mongo['id']+":"+mongo['pwd']+mongo['server'] + \
+    "/admin?retryWrites=true&w=majority&ssl=true&ssl_cert_reqs=CERT_NONE&readPreference=secondary&readPreferenceTags=nodeType:ANALYTICS"
+
+start_date = "2022/12/01 00:00:01"
+
+end_date = "2023/01/05 00:00:00"
